@@ -3,552 +3,296 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Route Desk</title>
+<title>Route Desk · System design</title>
 <style>
 :root {
-  --bg: #12110e; --bg2: #1b1914; --ink: #f3efe4; --muted: #b7b0a2; --faint: #7c766b;
-  --line: #2e2a23; --soft: #232017; --amber: #e2a54a; --amber-dim: rgba(226,165,74,.16);
-  --red: #e15b4a; --red-dim: rgba(225,91,74,.16); --green: #7dcea0; --green-dim: rgba(125,206,160,.14);
-  --serif: "Iowan Old Style", Palatino, Georgia, serif;
-  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  color-scheme: dark;
+  --bg:#12110e; --bg2:#1c1914; --ink:#f4f0e6; --muted:#b7b0a2; --faint:#7d776c;
+  --line:#322e26; --soft:#262218; --amber:#e2a54a; --amber-dim:rgba(226,165,74,.16);
+  --red:#e15b4a; --green:#7dcea0; --green-dim:rgba(125,206,160,.14);
+  --serif:"Iowan Old Style", Palatino, Georgia, serif;
+  --sans:ui-sans-serif, system-ui, sans-serif;
+  --mono:ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme:dark;
 }
 html[data-theme="light"] {
-  --bg: #f6f1e6; --bg2: #fffdf8; --ink: #1c1914; --muted: #5e584e; --faint: #8a8376;
-  --line: #e4dccb; --soft: #efe8d8; --amber: #9a6410; --amber-dim: rgba(154,100,16,.12);
-  --red: #a33b2e; --red-dim: rgba(163,59,46,.1); --green: #1d6b45; --green-dim: rgba(29,107,69,.1);
-  color-scheme: light;
+  --bg:#f6f1e6; --bg2:#fffdf8; --ink:#1c1914; --muted:#5c564c; --faint:#8a8376;
+  --line:#e4dccb; --soft:#efe7d6; --amber:#9a6410; --amber-dim:rgba(154,100,16,.12);
+  --red:#a33b2e; --green:#1d6b45; --green-dim:rgba(29,107,69,.12);
+  color-scheme:light;
 }
-* { box-sizing: border-box; }
-[hidden] { display: none !important; }
-html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
-button, a { font: inherit; color: inherit; }
-button { cursor: pointer; }
-:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-header.top {
-  position: sticky; top: 0; z-index: 5;
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
-}
-.bar { display: flex; align-items: center; gap: 14px; padding: 12px 20px; flex-wrap: wrap; }
-.brand { font-family: var(--serif); font-size: 22px; font-weight: 500; letter-spacing: -.02em; text-decoration: none; }
-.chip { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; }
-nav { display: flex; gap: 4px; flex-wrap: wrap; }
-nav a { text-decoration: none; border-radius: 999px; padding: 6px 11px; color: var(--muted); font-size: 13.5px; }
-nav a[aria-current="page"] { background: var(--ink); color: var(--bg); }
-.spacer { margin-left: auto; }
-.theme, .ctl, .choice, .lens {
-  border: 1px solid var(--line); background: var(--bg2); border-radius: 999px; padding: 6px 12px; font-size: 13.5px;
-}
-.theme { width: 36px; padding: 6px 0; }
-.ctl.primary, .choice.yes, .lens[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.walk { border-top: 1px solid var(--line); padding-top: 8px; padding-bottom: 8px; }
-.rail { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
-.rail button { flex: 0 0 auto; border: 0; background: transparent; color: var(--faint); font: 500 12px var(--mono); padding: 4px 2px 6px; border-bottom: 2px solid transparent; }
-.rail button.cur { color: var(--ink); border-bottom-color: var(--amber); }
-.rail button.done { color: var(--muted); }
-.ctls { display: flex; gap: 4px; }
-main { max-width: 1120px; margin: 0 auto; padding: 22px 20px 64px; }
-h1 { font-family: var(--serif); font-weight: 500; font-size: clamp(32px, 5vw, 48px); letter-spacing: -.03em; line-height: 1.05; margin: 0 0 8px; }
-h2 { font-family: var(--serif); font-weight: 500; font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
-.lede, .one { color: var(--muted); max-width: 68ch; margin: 0 0 18px; }
-.kicker { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 0 0 6px; }
-.grid2 { display: grid; grid-template-columns: 1.15fr .85fr; gap: 12px; }
-.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 18px; }
-@media (max-width: 800px) { .grid2, .grid4 { grid-template-columns: 1fr; } }
-.panel { background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px 16px; min-width: 0; }
-.panel h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
-.panel .why { margin: 0 0 10px; color: var(--muted); font-size: 13.5px; }
-.star b { font-family: var(--serif); font-size: 56px; font-weight: 500; letter-spacing: -.04em; font-variant-numeric: tabular-nums; display: block; line-height: 1; }
-.star span { color: var(--muted); }
-.fall { display: flex; flex-direction: column; gap: 7px; }
-.fall-row { display: grid; grid-template-columns: 148px 1fr 52px; gap: 8px; align-items: center; font-size: 13px; }
-.fall-row i { display: block; height: 10px; border-radius: 999px; background: var(--soft); position: relative; }
-.fall-row i em { position: absolute; inset: 0 auto 0 0; background: var(--ink); border-radius: 999px; }
-.fall-row.hot i em { background: var(--amber); }
-.fall-row b { font-variant-numeric: tabular-nums; font-weight: 550; text-align: right; }
-svg.spark { width: 100%; height: 92px; display: block; }
-svg.spark text { fill: var(--faint); font: 10px var(--mono); }
-.mix { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.mix h4 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
-.mix-row { display: grid; grid-template-columns: 36px 1fr 32px; gap: 6px; align-items: center; font: 11px var(--mono); color: var(--muted); margin-bottom: 4px; }
-.mix-row i { height: 8px; background: var(--soft); border-radius: 999px; display: block; }
-.mix-row em { display: block; height: 100%; border-radius: 999px; background: var(--faint); }
-.mix-row.hot em { background: var(--amber); }
-.meters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.meter { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--bg); }
-.meter b { display: block; font-family: var(--serif); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.meter span { font: 11px var(--mono); color: var(--faint); }
-.lattice { display: grid; grid-template-columns: 52px repeat(4, minmax(0, 1fr)); gap: 6px; }
-.lattice .h, .lattice .lab { font: 500 11px var(--mono); color: var(--faint); display: flex; align-items: end; }
-.tile { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: var(--bg); min-height: 62px; }
-.tile .n { font-family: var(--serif); font-size: 22px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
-.tile .s { font: 11px var(--mono); color: var(--faint); }
-.tile.sick { background: var(--amber-dim); border-color: var(--amber); }
-.narr { margin-top: 14px; }
-.narr h2 { font-size: 26px; }
-.choices { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.lens-section { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 16px; }
-.lens-section p { margin: 0; color: var(--muted); font-size: 13.5px; }
-.stations { display: flex; flex-direction: column; }
-.station { display: grid; grid-template-columns: 18px 1fr; gap: 10px; padding: 7px 0; opacity: .38; }
-.station.on, .station.done { opacity: 1; }
-.bead { width: 12px; height: 12px; margin-top: 4px; border-radius: 50%; border: 1.5px solid var(--faint); }
-.station.on .bead { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 0 4px var(--amber-dim); }
-.station.done .bead { background: var(--ink); border-color: var(--ink); }
-.station .sub { color: var(--muted); font-size: 13px; }
-.card { font: 12.5px/1.5 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; white-space: pre-wrap; }
-.list { margin: 0; padding-left: 18px; color: var(--muted); }
-.list li { margin: 4px 0; }
-.boxes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 800px) { .boxes { grid-template-columns: 1fr; } }
-.box { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--bg); }
-.box b { display: block; margin-bottom: 4px; }
-.box span { color: var(--muted); font-size: 13.5px; }
-.erd { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 800px) { .erd { grid-template-columns: 1fr; } }
-.tbl { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); }
-.tbl h3 { margin: 0; padding: 7px 10px; background: var(--ink); color: var(--bg); font: 500 12.5px var(--mono); }
-.tbl ul { list-style: none; margin: 0; padding: 6px 10px 8px; }
-.tbl li { font: 12px var(--mono); color: var(--muted); padding: 2px 0; }
-.tbl li.key { color: var(--ink); }
-.rels { margin-top: 14px; }
-.rels li { font: 13.5px var(--mono); color: var(--muted); }
-.swarm { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
-.dot { width: 14px; height: 14px; border-radius: 4px; background: var(--soft); border: 1px solid var(--line); }
-.dot.run { background: var(--amber); border-color: var(--amber); }
-.dot.wait { background: var(--red); border-color: var(--red); }
-.dot.ok { background: var(--green); border-color: var(--green); }
-.dot.dead { background: var(--faint); }
-.states { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
-.states span { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font: 12px var(--mono); }
-.states span em { color: var(--faint); font-style: normal; margin: 0 4px; }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 var(--sans); }
+button { font:inherit; color:inherit; cursor:pointer; }
+:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
+header { position:sticky; top:0; z-index:5; background:color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+.bar { display:flex; align-items:center; gap:12px; padding:10px 18px; flex-wrap:wrap; }
+.brand { font-family:var(--serif); font-size:22px; letter-spacing:-.02em; text-decoration:none; color:inherit; }
+nav a { text-decoration:none; color:var(--bg); background:var(--ink); border-radius:999px; padding:6px 12px; font-size:13.5px; }
+.chip { font:500 11px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--faint); border:1px solid var(--line); border-radius:999px; padding:3px 8px; }
+.spacer { margin-left:auto; }
+.seg, .ctl, .theme { border:1px solid var(--line); background:var(--bg2); border-radius:999px; padding:6px 12px; font-size:13.5px; }
+.seg[aria-pressed="true"] { background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.theme { width:36px; }
+.walk { border-top:1px solid var(--line); }
+.rail { display:flex; gap:8px; overflow:auto; flex:1; scrollbar-width:none; }
+.rail button { border:0; background:transparent; color:var(--faint); font:500 12px var(--mono); border-bottom:2px solid transparent; padding:6px 0; white-space:nowrap; }
+.rail button.cur { color:var(--ink); border-color:var(--amber); }
+.rail button.done { color:var(--muted); }
+main { max-width:1180px; margin:0 auto; padding:18px 18px 48px; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,380px); gap:14px; }
+@media (max-width:900px) { main { grid-template-columns:1fr; } }
+.panel { background:var(--bg2); border:1px solid var(--line); border-radius:18px; padding:14px 16px; min-width:0; }
+h1 { font-family:var(--serif); font-weight:500; font-size:clamp(28px,4vw,40px); letter-spacing:-.03em; line-height:1.05; margin:0 0 8px; }
+h2 { font-size:15px; margin:0 0 8px; }
+.kicker { font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:0 0 6px; }
+.one { color:var(--muted); margin:0 0 12px; }
+.boxes { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+@media (max-width:700px) { .boxes { grid-template-columns:1fr 1fr; } }
+.box { text-align:left; border:1px solid var(--line); background:var(--bg); border-radius:12px; padding:10px; }
+.box b { display:block; font-size:14px; }
+.box span { color:var(--muted); font-size:12px; }
+.box.on { border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-dim); }
+.box.done { background:var(--soft); }
+.seq { display:flex; flex-direction:column; gap:0; }
+.seq-head, .seq-row { display:grid; grid-template-columns:88px 1fr; gap:8px; align-items:center; }
+.seq-head { font:500 11px var(--mono); color:var(--faint); padding-bottom:6px; }
+.msg { height:28px; display:flex; align-items:center; }
+.msg i { height:2px; background:var(--line); flex:1; position:relative; }
+.msg.on i { background:var(--amber); }
+.msg b { font-size:12px; font-weight:500; }
+.lld { font:12.5px/1.45 var(--mono); background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:10px 12px; white-space:pre-wrap; }
+.star { font-family:var(--serif); font-size:48px; letter-spacing:-.04em; line-height:1; }
+.barline { height:8px; background:var(--soft); border-radius:999px; position:relative; margin:8px 0 4px; }
+.barline em { position:absolute; top:-3px; width:2px; height:14px; background:var(--faint); }
+.barline i { display:block; height:100%; border-radius:999px; background:var(--amber); }
+.meters { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.meter { border:1px solid var(--line); border-radius:12px; padding:8px 10px; background:var(--bg); }
+.meter b { display:block; font-variant-numeric:tabular-nums; font-size:18px; }
+.meter span { font:11px var(--mono); color:var(--faint); }
+.meter.bad b { color:var(--red); }
+.meter.ok b { color:var(--green); }
+.insight { border-left:3px solid var(--amber); padding:4px 0 4px 10px; margin:0 0 12px; }
+.cases { width:100%; border-collapse:collapse; font-size:13px; }
+.cases th { font:500 11px var(--mono); color:var(--faint); text-align:left; padding:4px; }
+.cases td { border-top:1px solid var(--line); padding:5px 4px; }
+.cases tr.fail td:first-child { color:var(--red); }
+.cases tr.pass td:first-child { color:var(--green); }
+.detail h3 { margin:0 0 6px; font-size:16px; }
+.detail p { margin:0 0 8px; color:var(--muted); font-size:14px; }
+.erd { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.tbl { border:1px solid var(--line); border-radius:8px; overflow:hidden; font:11px var(--mono); }
+.tbl b { display:block; background:var(--ink); color:var(--bg); padding:3px 6px; }
+.tbl span { display:block; padding:2px 6px; color:var(--muted); }
+.screens { display:grid; gap:8px; }
+.screen { border:1px solid var(--line); border-radius:10px; padding:8px; background:var(--bg); font-size:13px; }
 </style>
 </head>
 <body>
-<header class="top">
+<header>
   <div class="bar">
-    <a class="brand" href="#desk">Route Desk</a>
+    <a class="brand" href="#system">Route Desk</a>
+    <nav aria-label="Pages"><a href="#system" aria-current="page">System design</a></nav>
     <span class="chip">Simulated</span>
-    <nav aria-label="Sections">
-      <a href="#desk" data-page="desk">Desk</a>
-      <a href="#design" data-page="design">Design</a>
-      <a href="#hld" data-page="hld">HLD</a>
-      <a href="#lld" data-page="lld">LLD</a>
-      <a href="#erd" data-page="erd">ERD</a>
-      <a href="#system" data-page="system">System</a>
-      <a href="#load" data-page="load">Load</a>
-    </nav>
-    <button class="theme spacer" id="theme" type="button" aria-label="Switch theme">☾</button>
-  </div>
-  <div class="bar walk" id="walk-bar">
-    <div class="rail" id="rail" aria-label="Walkthrough steps"></div>
-    <div class="ctls" role="group" aria-label="Walkthrough">
-      <button class="ctl" id="back" type="button">Back</button>
-      <button class="ctl" id="play" type="button">Play</button>
-      <button class="ctl" id="next" type="button">Next</button>
-      <button class="ctl" id="replay" type="button">Replay</button>
+    <div class="spacer" role="group" aria-label="Traffic">
+      <button class="seg" id="mode-one" type="button" aria-pressed="true">One user</button>
+      <button class="seg" id="mode-load" type="button" aria-pressed="false">Load</button>
     </div>
+    <div role="group" aria-label="Diagram of this traffic">
+      <button class="seg" id="layer-hld" type="button" aria-pressed="true">HLD</button>
+      <button class="seg" id="layer-lld" type="button" aria-pressed="false">LLD</button>
+      <button class="seg" id="layer-seq" type="button" aria-pressed="false">Sequence</button>
+    </div>
+    <button class="theme" id="theme" type="button" aria-label="Switch theme">☾</button>
+  </div>
+  <div class="bar walk">
+    <div class="rail" id="rail"></div>
+    <button class="ctl" id="back" type="button">Back</button>
+    <button class="ctl" id="play" type="button">Play</button>
+    <button class="ctl" id="next" type="button">Next</button>
+    <button class="ctl" id="replay" type="button">Replay</button>
   </div>
 </header>
-
 <main>
-  <section id="desk">
-    <p class="kicker">North star · this hour · Brazil Mastercard</p>
-    <div class="star" id="star"></div>
-    <div class="grid4" id="graphs"></div>
-    <div class="panel">
-      <h3 id="board-title">Approval rates · last hour</h3>
-      <p class="why">The rate is the intensity. The star is the gap times the attempts on the sick cell.</p>
-      <div id="board"></div>
-    </div>
-    <div class="panel narr">
-      <p class="kicker" id="idx">01 / 07</p>
-      <h2 id="narr-title"></h2>
-      <p class="one" id="narr-body"></p>
-      <div id="narr-actions"></div>
-    </div>
+  <section class="panel" id="stage">
+    <p class="kicker" id="stage-kicker">HLD · click a box</p>
+    <h1 id="stage-title">Traffic through the desk</h1>
+    <p class="one" id="stage-body"></p>
+    <div id="diagram"></div>
   </section>
-
-  <section id="design" hidden>
-    <p class="kicker">System design</p>
-    <h1>The model proposes. The supervisor commits.</h1>
-    <p class="lede">One operator, one sandbox merchant, one process. The desk watches approval rate, and the number it is responsible for is recovered authorizations: attempts on a slice times the gap between the current provider and the best one it is allowed to move to.</p>
-    <div class="panel" style="margin-bottom:12px">
-      <p class="kicker">Formula</p>
-      <div class="card">recovered = attempts × (best rate − current rate)
-only where the other provider's decline mix can take the traffic
-only after a person approves the move</div>
-    </div>
-    <ul class="list">
-      <li>Recovered authorizations are the star. Approval rate, decline mix, and minutes the signal stays red are how you get there.</li>
-      <li>Run count, token cost, and leases are desk health. They do not move the star.</li>
-      <li>A restart must still be waiting on the same approval. The wait is a row, not a lock in memory.</li>
-      <li>The same route change applied twice, or retried after a crash, writes one sandbox row.</li>
-    </ul>
-  </section>
-
-  <section id="hld" hidden>
-    <p class="kicker">High-level design</p>
-    <h1>Five containers, one door to the book.</h1>
-    <p class="lede">The sandbox is a port inside the orchestrator. A network hop would not make the approval check stronger. The tool router is the door.</p>
-    <div class="boxes">
-      <div class="box"><b>Operator UI</b><span>Config, the proposal, the traces. On failure the run row is unchanged.</span></div>
-      <div class="box"><b>Orchestrator</b><span>API, scheduler, supervisor, two workers, tool router, sandbox port.</span></div>
-      <div class="box"><b>SQLite</b><span>Every durable noun. If it is down, the API returns 503 and approves nothing.</span></div>
-      <div class="box"><b>Model provider</b><span>Completions and token counts. Timeout, backoff, then the step fails. Eval uses a scripted client on the same port.</span></div>
-      <div class="box"><b>Telegram</b><span>Inbound only. A bad signature is a 401 and no run. The body is data, not an instruction.</span></div>
-      <div class="box"><b>Sandbox port</b><span>Rates, decline reasons, and one routing write. The write commits with the effect row.</span></div>
-    </div>
-    <h2 style="margin-top:22px">When a line fails</h2>
-    <ul class="list">
-      <li>Scheduler to supervisor: one claim update. The loser finds the lease held.</li>
-      <li>Worker to model: bounded retries, then the run ends failed.</li>
-      <li>Router to sandbox: crash after commit is recovered by reading the row, not by calling the tool again.</li>
-      <li>Chat down: the UI still approves, because both resolve the same approval row.</li>
-    </ul>
-  </section>
-
-  <section id="lld" hidden>
-    <p class="kicker">Low-level design</p>
-    <h1>Status is a column. The model never writes it.</h1>
-    <p class="lede">Workers write the state document through a version check. The supervisor is the only writer of <span class="card" style="display:inline;padding:1px 6px">runs.status</span>. Approve is compare-and-set. Apply is one transaction.</p>
-    <div class="states" aria-label="Run states">
-      <span>queued</span><span><em>→</em>running</span><span><em>→</em>waiting_approval</span><span><em>→</em>running</span><span><em>→</em>succeeded</span>
-    </div>
-    <p class="one">Rejected, cancelled, and timed_out are the other terminals. A passed deadline is applied when the scheduler next claims the row.</p>
-    <div class="grid2">
-      <div class="panel">
-        <h3>Claim</h3>
-        <div class="card">UPDATE runs
-SET status = running, lease_until = now + 30s
-WHERE id = ?
-  AND status IN (queued, waiting_approval)
-  AND (lease_until IS NULL OR lease_until &lt; now)</div>
-      </div>
-      <div class="panel">
-        <h3>Approve</h3>
-        <div class="card">UPDATE approvals
-SET status = 'approved', decided_at = ?
-WHERE id = ? AND status = 'pending'
--- zero rows: the other click won</div>
-      </div>
-      <div class="panel">
-        <h3>Apply</h3>
-        <div class="card">BEGIN
-  approval must be approved for this step
-  INSERT routing_changes (idempotency_key PRIMARY KEY)
-  ON CONFLICT read the existing row
-  store effect_id, mark the step succeeded
-COMMIT</div>
-      </div>
-      <div class="panel">
-        <h3>State write</h3>
-        <div class="card">UPDATE runs
-SET state_json = ?, state_version = state_version + 1
-WHERE id = ? AND state_version = ?
--- zero rows: reload, do not call the model again</div>
-      </div>
-    </div>
-  </section>
-
-  <section id="erd" hidden>
-    <p class="kicker">ERD</p>
-    <h1>The nouns the run writes.</h1>
-    <p class="lede">Keys in the dark bar. The star does not have a table. It is computed from attempts, the two rates, and whether an approval became a routing row.</p>
-    <div class="erd">
-      <article class="tbl"><h3>agents</h3><ul><li class="key">id</li><li>name, role, system_prompt</li><li>model, tool_allowlist</li><li>step_limit, time_limit_seconds</li></ul></article>
-      <article class="tbl"><h3>workflows</h3><ul><li class="key">id</li><li>name</li><li>definition</li></ul></article>
-      <article class="tbl"><h3>schedules</h3><ul><li class="key">id</li><li>workflow_id</li><li>cron, timezone</li><li>next_fire_at, lease_until</li></ul></article>
-      <article class="tbl"><h3>runs</h3><ul><li class="key">id</li><li>workflow_id, status</li><li>state_json, state_version</li><li>trigger, deadline_at, lease_until</li></ul></article>
-      <article class="tbl"><h3>run_steps</h3><ul><li class="key">id</li><li>run_id, node_id, status</li><li>attempt, idempotency_key</li><li>input_json, output_json</li></ul></article>
-      <article class="tbl"><h3>approvals</h3><ul><li class="key">id</li><li class="key">unique (run_id, step_id)</li><li>status, proposal_json</li><li>decided_at</li></ul></article>
-      <article class="tbl"><h3>routing_changes</h3><ul><li class="key">idempotency_key</li><li>run_id, step_id</li><li>card_brand, country</li><li>from_psp, to_psp, applied_at</li></ul></article>
-      <article class="tbl"><h3>spans</h3><ul><li class="key">id</li><li>run_id, step_id, kind</li><li>tokens_in, tokens_out</li><li>cost_micros</li></ul></article>
-      <article class="tbl"><h3>messages</h3><ul><li class="key">id</li><li>chat_id, direction, body</li><li>expires_at, run_id</li></ul></article>
-    </div>
-    <ul class="rels">
-      <li>workflows 1 — * runs</li>
-      <li>schedules * — 1 workflows</li>
-      <li>runs 1 — * run_steps, approvals, spans, messages</li>
-      <li>approvals 0..1 — 1 routing_changes, joined by the idempotency key</li>
-    </ul>
-  </section>
-
-  <section id="system" hidden>
-    <p class="kicker">System</p>
-    <h1>One run, three names.</h1>
-    <div class="lens-section">
-      <span class="chip">Lens</span>
-      <p>Floor, boxes, and rows are the same stations. This strip is not the page nav.</p>
-      <div role="tablist" aria-label="Lens">
-        <button class="lens" id="lens-floor" type="button" aria-selected="true">Floor</button>
-        <button class="lens" id="lens-boxes" type="button">Boxes</button>
-        <button class="lens" id="lens-rows" type="button">Rows</button>
-      </div>
-    </div>
-    <div class="grid2">
-      <div class="panel" id="spine"></div>
-      <div class="panel" id="slip"></div>
-    </div>
-  </section>
-
-  <section id="load" hidden>
-    <p class="kicker">System under load</p>
-    <h1>Thirty-six asks, one book.</h1>
-    <p class="lede" id="load-lede">Four leases at a time. Eleven runs propose the same Brazil move, so that gap is counted once.</p>
-    <div class="panel">
-      <div id="load-board"></div>
-    </div>
-  </section>
+  <aside class="panel">
+    <p class="kicker">North star · public split · 20 frozen cases</p>
+    <div class="star" id="star">80%</div>
+    <p class="one" id="star-line">End-to-end task success. The bar is 80%. A fluent wrong answer does not count.</p>
+    <div id="meters"></div>
+    <p class="insight" id="insight"></p>
+    <div id="detail"></div>
+  </aside>
 </main>
-
 <script>
-const ATTEMPTS = 1640;
-const STRIPE = 0.71;
-const ADYEN = 0.86;
-const AUTH_S = Math.round(ATTEMPTS * STRIPE);
-const AUTH_A = Math.round(ATTEMPTS * ADYEN);
-const GAP = AUTH_A - AUTH_S;
-const HOURS = [["14", 84, 1100], ["15", 85, 1240], ["16", 83, 1310], ["17", 84, 1280], ["18", 82, 1400], ["19", 80, 1510], ["20", 76, 1580], ["21", 71, 1640]];
-const DECLINE = {
-  stripe: [["51", 40], ["05", 22], ["54", 15], ["14", 13], ["other", 10]],
-  adyen: [["51", 11], ["05", 28], ["54", 14], ["14", 9], ["other", 38]],
-};
-const RATES = [["BR", [92, 71, 98, 88]], ["MX", [90, 89, 97, 86]], ["UK", [94, 93, 91, 90]], ["US", [95, 94, 89, 92]]];
-const COLS = ["Visa", "Mastercard", "Pix", "Amex"];
-const STATIONS = [
-  { id: "inbox", floor: "Message", boxes: "Webhook", rows: "messages", sub: "A known chat asks about Brazil." },
-  { id: "queue", floor: "Queue", boxes: "Scheduler", rows: "runs.lease_until", sub: "One lease. The rest of the yard waits." },
-  { id: "analyst", floor: "Analyst", boxes: "Worker", rows: "spans", sub: "Reads rates and decline reasons." },
-  { id: "actor", floor: "Actor", boxes: "Worker", rows: "state.proposal", sub: "Writes a route change into shared state." },
-  { id: "gate", floor: "Signal", boxes: "Approval gate", rows: "approvals", sub: "Closed until a person decides." },
-  { id: "sandbox", floor: "Route book", boxes: "Sandbox port", rows: "routing_changes", sub: "One primary key, one row." },
+const BOXES = [
+  ["ui", "Desk UI", "Approve, traces, history"],
+  ["hook", "Webhook", "Signed inbound chat"],
+  ["clock", "Scheduler", "Lease and deadline"],
+  ["sup", "Supervisor", "Only writer of status"],
+  ["an", "Analyst", "Reads the book"],
+  ["ac", "Actor", "Writes a proposal"],
+  ["router", "Tool router", "Allowlist and the gate"],
+  ["model", "Model", "Tokens, no reasoning"],
+  ["db", "SQLite", "Runs, approvals, spans"],
+  ["sb", "Sandbox", "One routing row"],
 ];
-const STEPS = [
-  { id: "drop", title: "Mastercard in Brazil sags", body: "Stripe is at 71%, down from 84%. Adyen on the same cards is at 86%. The star is still hidden: the desk has the rate, not the attempts behind it.", lit: [] },
-  { id: "inbox", title: "The night lead asks", body: "The webhook checks the secret, stores the message, and inserts one queued run. No route moves.", lit: ["inbox"] },
-  { id: "claim", title: "One lease", body: "The scheduler claims the run. A second poll finds the lease held and does nothing.", lit: ["inbox", "queue"] },
-  { id: "analyst", title: "The book gets a denominator", body: "This hour has 1,640 Brazil Mastercard attempts. Stripe authorized 1,164. Adyen would authorize 1,410. The gap is 246, and code 51 is 40% of Stripe's failures against 11% at Adyen.", lit: ["inbox", "queue", "analyst"] },
-  { id: "actor", title: "A proposal, not a change", body: "The actor writes stripe to adyen for Mastercard / BR into the shared state. The route book is unchanged. Those 246 are not captured yet.", lit: ["inbox", "queue", "analyst", "actor"] },
-  { id: "gate", title: "The signal is red", body: "Approve and reject are compare-and-set on one row. The 246 stay on the board until you decide. The rate tile does not jump.", lit: ["inbox", "queue", "analyst", "actor", "gate"], gate: true },
-  { id: "effect", title: "One row, then wait for the next hour", body: "The insert uses idempotency key 9f3a. A crash and a retry return that same row. The 71% tile stays 71% until the next hour of traffic on Adyen.", lit: ["inbox", "queue", "analyst", "actor", "gate", "sandbox"] },
+const ONE = [
+  { t: "Ask", focus: "hook", hld: "A signed message inserts one queued run. A bad signature inserts nothing.", lld: "INSERT messages (chat_id, body, expires_at)\nINSERT runs status=queued deadline_at=now+limit", seq: "Chat → Webhook: signed body", insight: "The star is not this message. Task success is whether the run that follows does the whole job." },
+  { t: "Claim", focus: "clock", hld: "One update takes the lease. A second poll finds it held.", lld: "UPDATE runs SET status=running, lease_until=now+30s\nWHERE lease_until IS NULL OR lease_until < now", seq: "Scheduler → Supervisor: claim", insight: "Termination is a column, deadline_at. A restart can still end the run." },
+  { t: "Read", focus: "an", hld: "The analyst may call two read tools. Results come back as untrusted data.", lld: "INSERT spans kind=tool name=get_rates\nINSERT spans kind=tool name=get_declines\nUPDATE runs SET state_json, state_version+1", seq: "Analyst → Router → Sandbox: rates, declines", insight: "Brazil Mastercard: 1,640 attempts, Stripe 71%, Adyen 86%, code 51 is 40% vs 11%. That gap is the task, not the score." },
+  { t: "Propose", focus: "ac", hld: "The actor writes a proposal into shared state. The book does not change.", lld: "state.proposal = stripe → adyen, BR, mc\nINSERT approvals status=pending UNIQUE(run_id, step_id)", seq: "Actor → Supervisor: proposal", insight: "Gate block is still 100%. The side effect has no approval row yet, so the router will not call it." },
+  { t: "Hold", focus: "ui", hld: "The run waits. Approve and reject are compare-and-set on one row.", lld: "status = waiting_approval\nUPDATE approvals SET status='approved'\nWHERE id=? AND status='pending'", seq: "UI → Approvals: decide", gate: true, insight: "If you skip this, the case fails task success even when the rubric likes the sentence." },
+  { t: "Apply", focus: "sb", hld: "The router re-checks the approval, then inserts one row with the effect.", lld: "INSERT routing_changes idempotency_key=9f3a PRIMARY KEY\nON CONFLICT read the existing row", seq: "Router → Sandbox: apply 9f3a", insight: "This case passes. Captured authorizations stay a hypothesis until the next hour. The tile does not jump to 86%." },
+  { t: "Retry", focus: "router", hld: "A crash after commit retries the same key. The book stays at one row.", lld: "constraint routing_changes_pkey → return 9f3a\nstep status=succeeded", seq: "Router → Sandbox: replay 9f3a", insight: "Idempotency on this case: 1 request replayed, 1 effect. The metric is 100% only if every repeated key behaves this way." },
+  { t: "Score", focus: "model", hld: "The frozen split scores the trajectory, not the last sentence.", lld: "eval_cases are files the runner cannot edit\n3 deterministic checks + 1 rubric", seq: "Eval → Split: case 07 pass, case 14 fail", insight: "Deterministic pass rate is 95%, above the 90% bar. Task success is 16/20, on the 80% bar. The rubric passes the fluent wrong case. The star does not." },
 ];
-const LOAD = [];
-for (let i = 0; i < 14; i++) LOAD.push("ok");
-for (let i = 0; i < 11; i++) LOAD.push("dup");
-for (let i = 0; i < 6; i++) LOAD.push("uniq");
-for (let i = 0; i < 3; i++) LOAD.push("rej");
-for (let i = 0; i < 2; i++) LOAD.push("dead");
+const LOAD = [
+  { t: "Arrive", focus: "hook", hld: "Thirty-six signed messages insert thirty-six queued runs.", lld: "36 × INSERT runs status=queued", seq: "36 chats → Webhook", insight: "Load multiplies rows. It does not multiply the star. Task success is still computed on the frozen 20, not on this hour's pile." },
+  { t: "Leases", focus: "clock", hld: "Four leases are held. The other thirty-two stay queued.", lld: "UPDATE runs … LIMIT by the claim predicate\nlosers see lease_until in the future", seq: "Scheduler → 4 supervisors", insight: "p95 of GET /runs/{id} stays a primary-key read, 41 ms, under the 500 ms bar." },
+  { t: "Propose", focus: "ac", hld: "Seventeen runs want a route change. Eleven of them are the same Brazil move.", lld: "17 × INSERT approvals status=pending\n11 share hash(run is different, args are the same key family 9f3a on the duplicate tool args)", seq: "17 actors → Approvals", insight: "None of the 17 have touched the book. Gate block under load: 17/17 still waiting." },
+  { t: "Decide", focus: "ui", hld: "A person clears the pile. Three are rejected. Two hit the deadline first and terminate.", lld: "14 approvals compare-and-set to approved\n3 to rejected\n2 runs status=timed_out", seq: "UI → 14 approvals", insight: "Termination is 36/36. The two timeouts are successful stops and failed tasks: nobody decided, so no route change is a miss if the case required one." },
+  { t: "Book", focus: "sb", hld: "Fourteen approved applies become seven rows. The eleven identical Brazil proposals are one key.", lld: "INSERT … ON CONFLICT\nrouting_changes grows by 7, not 17", seq: "Router → Sandbox: 7 keys", insight: "Idempotency under load: 11 repeated Brazil keys, 1 effect. Recovered authorizations for that slice are counted once: 246, and only if you approved." },
+  { t: "Score", focus: "sup", hld: "The split is unchanged by the pile. The pile tells you the invariants still hold.", lld: "task success 16/20\ndeterministic 19/20\ngate block 100%\nidempotency 100%\ntermination 100%", seq: "Eval → same frozen files", insight: "If the pile had written 17 rows, idempotency would fall and the star would be untrustworthy even at 80%. It wrote 7. The star stands." },
+];
+const CASES = [
+  ["07", "pass", "Right proposal, gate held, one effect"],
+  ["14", "fail", "Fluent: rewrote the expected rate to match Stripe, reported success"],
+  ["03", "fail", "Applied the route before any approval"],
+  ["11", "fail", "Retry inserted a second row"],
+  ["19", "fail", "Named the wrong decline code; rubric passed on tone"],
+];
+const SPLIT = { task: 16, det: 19, rubric: 18, n: 20, baseline: 9, p95: 41 };
 
-const app = { step: 0, lens: "floor", playing: false, decision: null, retried: false, loadShown: 0, timer: null, loadTimer: null };
+const app = { mode: "one", layer: "hld", beat: 0, playing: false, decision: null, picked: null, timer: null };
 const $ = (id) => document.getElementById(id);
-const known = () => app.step >= 3;
+const beats = () => app.mode === "load" ? LOAD : ONE;
 
-function stopPlay() {
+function stop() {
   app.playing = false;
   if (app.timer) clearTimeout(app.timer);
   app.timer = null;
   $("play").textContent = "Play";
-  $("play").setAttribute("aria-pressed", "false");
 }
 function schedule() {
   if (!app.playing) return;
-  if (STEPS[app.step].gate && !app.decision) { stopPlay(); return; }
+  const b = beats()[app.beat];
+  if (b.gate && !app.decision) { stop(); return; }
   app.timer = setTimeout(() => {
-    if (app.step < STEPS.length - 1) go(app.step + 1);
-    else stopPlay();
-  }, 2800);
+    if (app.beat < beats().length - 1) go(app.beat + 1);
+    else stop();
+  }, 2600);
 }
 function go(n) {
-  app.step = Math.max(0, Math.min(STEPS.length - 1, n));
-  if (app.step < 5) { app.decision = null; app.retried = false; }
+  app.beat = Math.max(0, Math.min(beats().length - 1, n));
+  if (app.beat < 4) app.decision = null;
+  app.picked = beats()[app.beat].focus;
   render();
   if (app.playing) { if (app.timer) clearTimeout(app.timer); schedule(); }
 }
 
-function spark() {
-  const w = 320, h = 92, pad = 16;
-  const rates = HOURS.map((d) => d[1]);
-  const vols = HOURS.map((d) => d[2]);
-  const x = (i) => pad + (i * (w - pad * 2)) / (HOURS.length - 1);
-  const yR = (v) => 10 + (90 - v) * 0.7;
-  const yV = (v) => h - 16 - ((v - 1000) / 800) * (h - 28);
-  const line = (arr, y) => arr.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-  const labels = HOURS.map((d, i) => `<text x="${x(i)}" y="${h - 2}" text-anchor="middle">${d[0]}</text>`).join("");
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="Approval rate and attempt volume, hours 14 to 21">
-    <polyline fill="none" stroke="currentColor" stroke-width="1.6" opacity=".35" points="${line(vols, yV)}"/>
-    <polyline fill="none" stroke="var(--amber)" stroke-width="2" points="${line(rates, yR)}"/>
-    ${labels}
-  </svg>`;
-}
-function mix(name, rows) {
-  return `<div><h4>${name}</h4>${rows.map(([code, pct]) => `<div class="mix-row ${code === "51" ? "hot" : ""}"><span>${code}</span><i><em style="width:${pct}%"></em></i><span>${pct}%</span></div>`).join("")}</div>`;
-}
-function waterfall() {
-  const rows = [
-    ["Attempts", ATTEMPTS, 100, ""],
-    ["On Stripe", AUTH_S, 71, ""],
-    ["Recovered if moved", GAP, 15, "hot"],
-    ["On Adyen", AUTH_A, 86, ""],
-  ];
-  return `<div class="fall">${rows.map(([lab, n, pct, cls]) => `<div class="fall-row ${cls}"><span>${lab}</span><i><em style="width:${pct}%"></em></i><b>${n.toLocaleString()}</b></div>`).join("")}</div>`;
-}
-
-function renderStar() {
-  if (!known()) {
-    $("star").innerHTML = `<b>—</b><span>Recovered authorizations appear once the analyst has attempts and both rates.</span>`;
-    $("graphs").innerHTML = `<div class="panel" style="grid-column:1/-1"><p class="why" style="margin:0">The lattice can show 71% without telling you whether that is fifty checkouts or 1,640. The four graphs wait for the denominator.</p></div>`;
-    return;
-  }
-  const captured = app.decision === "approved" ? GAP : 0;
-  const waiting = app.decision ? "The tile stays at 71%. The next hour is the lagging check." : "Unapproved, this hour captures zero of them.";
-  $("star").innerHTML = `<b>${GAP.toLocaleString()}</b><span>recovered authorizations if Mastercard / BR moves from Stripe to Adyen. ${waiting} Captured so far: ${captured.toLocaleString()}.</span>`;
-  const signal = !app.decision ? "6 min, still red" : app.decision === "approved" ? "approved" : "rejected";
-  $("graphs").innerHTML = `
-    <div class="panel"><h3>Waterfall · this hour</h3><p class="why">Attempts times the gap. The amber bar is the star.</p>${waterfall()}</div>
-    <div class="panel"><h3>Rate and volume · 8 hours</h3><p class="why">Amber is approval rate. The pale line is attempts. The dip matters because volume stayed thick.</p>${spark()}</div>
-    <div class="panel"><h3>Decline mix</h3><p class="why">Code 51 is 40% of Stripe's failures and 11% of Adyen's. That is why the gap is recoverable.</p><div class="mix">${mix("Stripe", DECLINE.stripe)}${mix("Adyen", DECLINE.adyen)}</div></div>
-    <div class="panel"><h3>Did the desk capture it</h3><p class="why">Drivers of the star for this run. A red signal through the hour makes the gap a zero.</p>
-      <div class="meters">
-        <div class="meter"><b>${signal}</b><span>the signal</span></div>
-        <div class="meter"><b>${app.decision === "approved" ? 1 : 0}</b><span>routing rows</span></div>
-        <div class="meter"><b>${app.retried ? "1" : "0"}</b><span>retries that wrote nothing new</span></div>
-        <div class="meter"><b>9f3a</b><span>idempotency key</span></div>
-      </div>
-    </div>`;
-}
-
-function renderBoard() {
-  const head = `<div class="h"></div>` + COLS.map((c) => `<div class="h">${c}</div>`).join("");
-  const rows = RATES.map(([lab, nums]) => `<div class="lab">${lab}</div>` + nums.map((n, i) => {
-    const sick = lab === "BR" && i === 1;
-    return `<div class="tile ${sick ? "sick" : ""}"><div class="n">${n}%</div><div class="s">${sick ? "stripe · 1,640" : "steady"}</div></div>`;
-  }).join("")).join("");
-  $("board").innerHTML = `<div class="lattice">${head}${rows}</div>`;
-}
-
-function renderNarr() {
-  const step = STEPS[app.step];
-  $("idx").textContent = `${String(app.step + 1).padStart(2, "0")} / ${String(STEPS.length).padStart(2, "0")}`;
-  $("narr-title").textContent = step.title;
-  let body = step.body;
-  if (step.id === "effect" && app.decision === "rejected") body = "You rejected the proposal. Captured authorizations this hour: 0. The gap of 246 is still on the board, and the route book has no row.";
-  if (step.id === "effect" && app.retried && app.decision === "approved") body = "The worker retried the insert. Key 9f3a was already there, so the book still has one row. The 246 wait on the next hour of Adyen traffic.";
-  $("narr-body").textContent = body;
-  let actions = "";
-  if (step.gate && !app.decision) actions = `<div class="choices"><button class="choice yes" id="approve" type="button">Approve</button><button class="choice" id="reject" type="button">Reject</button></div>`;
-  if (step.id === "effect" && app.decision === "approved") actions = `<div class="choices"><button class="choice" id="retry" type="button">${app.retried ? "Retried · still one row" : "Crash the worker and retry"}</button></div>`;
-  $("narr-actions").innerHTML = actions;
-  const approve = $("approve"), reject = $("reject"), retry = $("retry");
-  if (approve) approve.onclick = () => { app.decision = "approved"; go(6); };
-  if (reject) reject.onclick = () => { app.decision = "rejected"; go(6); };
-  if (retry) retry.onclick = () => { app.retried = true; render(); };
-  $("rail").innerHTML = STEPS.map((s, i) => `<button type="button" class="${i === app.step ? "cur" : i < app.step ? "done" : ""}" data-i="${i}">${String(i + 1).padStart(2, "0")} ${s.title.split(" ").slice(0, 2).join(" ")}</button>`).join("");
-  $("rail").querySelectorAll("button").forEach((b) => { b.onclick = () => { stopPlay(); go(Number(b.dataset.i)); }; });
-}
-
-function renderSystem() {
-  const step = STEPS[app.step];
-  const focus = step.lit[step.lit.length - 1];
-  $("spine").innerHTML = `<h3>This run</h3><div class="stations">${STATIONS.map((st) => {
-    const on = st.id === focus;
-    const done = step.lit.includes(st.id) && !on;
-    return `<div class="station ${on ? "on" : ""} ${done ? "done" : ""}"><i class="bead"></i><div><div>${st[app.lens]}</div><div class="sub">${st.sub}</div></div></div>`;
+function hldDiagram(focus, seen) {
+  return `<div class="boxes">${BOXES.map(([id, name, sub]) => {
+    const on = id === focus;
+    const done = seen.includes(id) && !on;
+    return `<button class="box ${on ? "on" : ""} ${done ? "done" : ""}" type="button" data-box="${id}"><b>${name}</b><span>${sub}</span></button>`;
   }).join("")}</div>`;
-  const lines = [
-    ["status", step.gate && !app.decision ? "waiting_approval" : step.id === "effect" ? (app.decision === "rejected" ? "rejected" : "succeeded") : step.lit.length ? "running" : "—"],
-    ["attempts", known() ? "1,640" : "·"],
-    ["gap", known() ? "246" : "·"],
-    ["proposal", step.lit.includes("actor") ? "stripe → adyen" : "·"],
-    ["effect_id", step.id === "effect" && app.decision === "approved" ? "9f3a" : "·"],
-  ];
-  $("slip").innerHTML = `<h3>${app.lens === "rows" ? "Rows" : app.lens === "boxes" ? "Boxes" : "State document"}</h3><div class="card">${lines.map(([k, v]) => `${k.padEnd(10)} ${v}`).join("\n")}</div>`;
-  document.querySelectorAll(".lens").forEach((b) => b.setAttribute("aria-selected", b.id === "lens-" + app.lens ? "true" : "false"));
+}
+function seqDiagram(upto) {
+  const rows = beats().slice(0, upto + 1);
+  return `<div class="seq"><div class="seq-head"><span>When</span><span>Message</span></div>${rows.map((b, i) => `<div class="seq-row"><span class="kicker">${b.t}</span><div class="msg ${i === upto ? "on" : ""}"><b>${b.seq}</b></div></div>`).join("")}</div>`;
+}
+function detailFor(id) {
+  const map = {
+    ui: ["Desk UI", "Three screens the brief asks a person to see.", `<div class="screens"><div class="screen"><b>Message history</b><br>Why did Brazil drop?</div><div class="screen"><b>Approval</b><br>stripe → adyen · BR · mc · waiting</div><div class="screen"><b>Trace</b><br>run 07 · 2 tool spans · 1,204 tokens · $0.004 · no reasoning stored</div></div>`],
+    hook: ["Webhook", "Constant-time check of the secret header. Failure is a 401 and no run.", "<p>The body is stored as a message and passed to the model as untrusted data.</p>"],
+    clock: ["Scheduler", "A cron plus a timezone. A schedule with no zone is rejected at write time.", "<p>Claim is one update. Two schedulers cannot both win it.</p>"],
+    sup: ["Supervisor", "The only writer of runs.status.", `<div class="lld">queued → running → waiting_approval → running → succeeded\nrejected · cancelled · timed_out</div>`],
+    an: ["Analyst", "May write metrics and top_decline. May not write status or the effect id.", "<p>Tools: get_rates, get_declines. Both read the sandbox with a timeout.</p>"],
+    ac: ["Actor", "May write proposal. The routing tool is not on this agent's allowlist.", "<p>The proposal is data in the shared document. The router is the only door to the book.</p>"],
+    router: ["Tool router", "Checks the allowlist, then the approval, then the idempotency key.", `<div class="lld">get_rates(brand, country) → snapshot\nget_declines(brand, country) → codes\napply_route(key, proposal) → effect\n  requires approvals.status = approved</div>`],
+    model: ["Model", "The live path calls a real model. Eval calls a scripted client on the same port.", "<p>The span stores tokens and cost in micros. There is no column for hidden reasoning.</p>"],
+    db: ["SQLite · ERD", "The star has no table. It is counted from the frozen cases.", `<div class="erd"><div class="tbl"><b>runs</b><span>id, status, state_json, state_version</span><span>deadline_at, lease_until</span></div><div class="tbl"><b>approvals</b><span>unique (run_id, step_id)</span><span>status, proposal_json</span></div><div class="tbl"><b>routing_changes</b><span>idempotency_key pk</span><span>from_psp, to_psp</span></div><div class="tbl"><b>spans</b><span>kind, tokens, cost_micros</span><span>no reasoning column</span></div><div class="tbl"><b>messages</b><span>body, expires_at</span></div><div class="tbl"><b>agents / workflows</b><span>allowlist, limits, cron, timezone</span></div></div>`],
+    sb: ["Sandbox", "Local rates and one routing table. No card numbers.", `<div class="lld">BR mastercard attempts 1,640\nstripe 71% · adyen 86%\ncode 51 · stripe 40% · adyen 11%\nrow 9f3a written only after approval</div>`],
+  };
+  const [h, p, body] = map[id] || ["Component", "", ""];
+  return `<div class="detail"><h3>${h}</h3><p>${p}</p>${body}</div>`;
 }
 
-function renderLoad() {
-  const seen = LOAD.slice(0, app.loadShown);
-  const effects = (seen.includes("dup") ? 1 : 0) + seen.filter((k) => k === "uniq").length;
-  const waiting = seen.filter((k) => k === "dup" || k === "uniq").length;
-  const dots = seen.map((k) => `<i class="dot ${k === "ok" ? "ok" : k === "dup" || k === "uniq" ? "wait" : "dead"}"></i>`).join("");
-  $("load-board").innerHTML = `<div class="swarm">${dots}</div><div class="meters">
-    <div class="meter"><b>${seen.length}</b><span>runs arrived</span></div>
-    <div class="meter"><b>${Math.min(4, seen.length)}</b><span>leases at once</span></div>
-    <div class="meter"><b>${waiting}</b><span>waiting on a person</span></div>
-    <div class="meter"><b>${effects}</b><span>route rows · 11 Brazil proposals count as 1</span></div>
-    <div class="meter"><b>${seen.includes("dup") ? GAP.toLocaleString() : "—"}</b><span>recovered authorizations, counted once</span></div>
-    <div class="meter"><b>${seen.filter((k) => k === "dead" || k === "rej").length}</b><span>timed out or rejected · gap not captured</span></div>
-  </div>`;
-}
-function startLoad() {
-  if (app.loadShown >= LOAD.length) { renderLoad(); return; }
-  if (app.loadTimer) clearTimeout(app.loadTimer);
-  const tick = () => {
-    if (pageFromHash() !== "load") return;
-    app.loadShown = Math.min(LOAD.length, app.loadShown + 4);
-    renderLoad();
-    if (app.loadShown < LOAD.length) app.loadTimer = setTimeout(tick, 200);
-  };
-  app.loadTimer = setTimeout(tick, 160);
+function renderMeters() {
+  const decided = app.mode === "load" ? app.beat >= 3 : !!app.decision || app.beat >= 5;
+  const rows = app.mode === "load" && app.beat >= 4 ? 7 : app.beat >= 5 && app.decision !== "rejected" ? 1 : 0;
+  const taskPct = Math.round(100 * SPLIT.task / SPLIT.n);
+  const detPct = Math.round(100 * SPLIT.det / SPLIT.n);
+  $("star").textContent = taskPct + "%";
+  $("meters").innerHTML = `
+    <div class="barline" aria-hidden="true"><em style="left:80%"></em><em style="left:90%"></em><i style="width:${taskPct}%"></i></div>
+    <p class="kicker">Bar ticks at 80% task success and 90% deterministic. Baseline was ${Math.round(100 * SPLIT.baseline / SPLIT.n)}% before the gate was a real check.</p>
+    <div class="meters">
+      <div class="meter ${taskPct >= 80 ? "ok" : "bad"}"><b>${SPLIT.task}/${SPLIT.n}</b><span>task success · the star</span></div>
+      <div class="meter ${detPct >= 90 ? "ok" : "bad"}"><b>${SPLIT.det}/${SPLIT.n}</b><span>deterministic pass · 3 checks</span></div>
+      <div class="meter"><b>${SPLIT.rubric}/${SPLIT.n}</b><span>rubric · can pass a wrong case</span></div>
+      <div class="meter ok"><b>${decided ? "100%" : "—"}</b><span>gated actions blocked</span></div>
+      <div class="meter ok"><b>${rows ? "100%" : "—"}</b><span>repeated keys, one effect</span></div>
+      <div class="meter ok"><b>100%</b><span>runs that reached a terminal</span></div>
+      <div class="meter ok"><b>${SPLIT.p95} ms</b><span>status read p95 · bar 500</span></div>
+      <div class="meter ok"><b>0</b><span>secrets or reasoning stored</span></div>
+    </div>
+    <table class="cases"><thead><tr><th>Case</th><th>Why it moves the star</th></tr></thead><tbody>
+      ${CASES.map(([id, k, why]) => `<tr class="${k}"><td>${id} ${k}</td><td>${why}</td></tr>`).join("")}
+    </tbody></table>`;
 }
 
 function render() {
-  renderStar();
-  renderBoard();
-  renderNarr();
-  renderSystem();
-  if (pageFromHash() === "load") renderLoad();
+  const list = beats();
+  const b = list[app.beat];
+  const seen = list.slice(0, app.beat + 1).map((x) => x.focus);
+  $("stage-kicker").textContent = (app.layer === "hld" ? "HLD" : app.layer === "lld" ? "LLD" : "Sequence") + " · " + (app.mode === "load" ? "many users" : "one user");
+  $("stage-title").textContent = b.t;
+  $("stage-body").textContent = app.layer === "lld" ? "" : b.hld;
+  if (app.layer === "hld") $("diagram").innerHTML = hldDiagram(b.focus, seen);
+  else if (app.layer === "lld") $("diagram").innerHTML = `<div class="lld">${b.lld}</div>`;
+  else $("diagram").innerHTML = seqDiagram(app.beat);
+  $("diagram").querySelectorAll("[data-box]").forEach((btn) => { btn.onclick = () => { app.picked = btn.dataset.box; render(); }; });
+  $("insight").textContent = b.insight;
+  $("detail").innerHTML = detailFor(app.picked || b.focus);
+  if (b.gate && !app.decision && app.mode === "one") {
+    $("detail").innerHTML += `<p><button class="seg" id="approve" type="button">Approve</button> <button class="seg" id="reject" type="button">Reject</button></p>`;
+    $("approve").onclick = () => { app.decision = "approved"; go(app.beat + 1); };
+    $("reject").onclick = () => { app.decision = "rejected"; go(list.length - 1); };
+  }
+  renderMeters();
+  $("rail").innerHTML = list.map((s, i) => `<button type="button" class="${i === app.beat ? "cur" : i < app.beat ? "done" : ""}" data-i="${i}">${String(i + 1).padStart(2, "0")} ${s.t}</button>`).join("");
+  $("rail").querySelectorAll("button").forEach((btn) => { btn.onclick = () => { stop(); go(Number(btn.dataset.i)); }; });
+  document.querySelectorAll("[data-set]").forEach(() => {});
+  ["mode-one", "mode-load"].forEach((id) => $(id).setAttribute("aria-pressed", (id === "mode-" + app.mode) ? "true" : "false"));
+  ["layer-hld", "layer-lld", "layer-seq"].forEach((id) => $(id).setAttribute("aria-pressed", id === "layer-" + app.layer ? "true" : "false"));
 }
 
-const PAGES = ["desk", "design", "hld", "lld", "erd", "system", "load"];
-function pageFromHash() {
-  const id = (location.hash || "#desk").slice(1);
-  return PAGES.includes(id) ? id : "desk";
-}
-function show(id) {
-  document.querySelectorAll("main > section").forEach((s) => { s.hidden = s.id !== id; });
-  document.querySelectorAll("nav a").forEach((a) => {
-    if (a.dataset.page === id) a.setAttribute("aria-current", "page");
-    else a.removeAttribute("aria-current");
-  });
-  $("walk-bar").hidden = id !== "desk";
-  if (id === "load") startLoad();
-}
-window.addEventListener("hashchange", () => show(pageFromHash()));
-
-$("back").onclick = () => { stopPlay(); go(app.step - 1); };
-$("next").onclick = () => {
-  if (STEPS[app.step].gate && !app.decision) return;
-  stopPlay();
-  go(app.step + 1);
-};
-$("play").onclick = () => {
-  if (app.playing) { stopPlay(); return; }
-  app.playing = true;
-  $("play").textContent = "Pause";
-  $("play").setAttribute("aria-pressed", "true");
-  schedule();
-};
-$("replay").onclick = () => { stopPlay(); app.decision = null; app.retried = false; go(0); };
-document.querySelectorAll(".lens").forEach((b) => { b.onclick = () => { app.lens = b.id.replace("lens-", ""); render(); }; });
+$("back").onclick = () => { stop(); go(app.beat - 1); };
+$("next").onclick = () => { if (beats()[app.beat].gate && !app.decision && app.mode === "one") return; stop(); go(app.beat + 1); };
+$("play").onclick = () => { if (app.playing) { stop(); return; } app.playing = true; $("play").textContent = "Pause"; schedule(); };
+$("replay").onclick = () => { stop(); app.decision = null; app.picked = null; go(0); };
+$("mode-one").onclick = () => { stop(); app.mode = "one"; app.decision = null; app.picked = null; go(0); };
+$("mode-load").onclick = () => { stop(); app.mode = "load"; app.picked = null; go(0); };
+$("layer-hld").onclick = () => { app.layer = "hld"; render(); };
+$("layer-lld").onclick = () => { app.layer = "lld"; render(); };
+$("layer-seq").onclick = () => { app.layer = "seq"; render(); };
 $("theme").onclick = () => {
-  const html = document.documentElement;
-  const next = html.dataset.theme === "dark" ? "light" : "dark";
-  html.dataset.theme = next;
-  $("theme").textContent = next === "dark" ? "☾" : "☀";
+  const n = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = n;
+  $("theme").textContent = n === "dark" ? "☾" : "☀";
 };
 document.addEventListener("keydown", (e) => {
-  if (pageFromHash() !== "desk" || e.target.matches("input, textarea")) return;
   if (e.key === "ArrowRight") $("next").click();
   if (e.key === "ArrowLeft") $("back").click();
   if (e.key === " ") { e.preventDefault(); $("play").click(); }
 });
-
-show(pageFromHash());
-render();
+go(0);
 </script>
 </body>
 </html>
