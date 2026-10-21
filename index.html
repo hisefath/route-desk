@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Route Desk · a simulated payments night shift</title>
+<style>
+:root {
+  --bg: #12110e;
+  --bg2: #1b1914;
+  --ink: #f3efe4;
+  --muted: #b7b0a2;
+  --faint: #7c766b;
+  --line: #2e2a23;
+  --soft: #232017;
+  --amber: #e2a54a;
+  --amber-dim: rgba(226,165,74,.16);
+  --red: #e15b4a;
+  --red-dim: rgba(225,91,74,.16);
+  --green: #7dcea0;
+  --green-dim: rgba(125,206,160,.14);
+  --serif: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html[data-theme="light"] {
+  --bg: #f6f1e6;
+  --bg2: #fffdf8;
+  --ink: #1c1914;
+  --muted: #5e584e;
+  --faint: #8a8376;
+  --line: #e4dccb;
+  --soft: #efe8d8;
+  --amber: #9a6410;
+  --amber-dim: rgba(154,100,16,.12);
+  --red: #a33b2e;
+  --red-dim: rgba(163,59,46,.1);
+  --green: #1d6b45;
+  --green-dim: rgba(29,107,69,.1);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--sans);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+header.top {
+  position: sticky; top: 0; z-index: 4;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 20px 10px;
+}
+.bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
+.brand b { font-family: var(--serif); font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
+.chip {
+  font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--faint); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px;
+}
+.lenses, .ctls { display: flex; gap: 4px; }
+.lens, .ctl, .theme, .choice {
+  border: 1px solid var(--line); background: var(--bg2); border-radius: 999px;
+  padding: 6px 12px; font-size: 13.5px;
+}
+.lens[aria-selected="true"], .ctl.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.theme { width: 36px; padding: 6px 0; }
+.rail { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.rail button {
+  flex: 0 0 auto; border: 0; background: transparent; color: var(--faint);
+  font: 500 12px var(--mono); padding: 4px 2px 6px; border-bottom: 2px solid transparent;
+}
+.rail button.cur { color: var(--ink); border-bottom-color: var(--amber); }
+.rail button.done { color: var(--muted); }
+
+main { flex: 1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .8fr) minmax(260px, 320px); gap: 14px; padding: 14px 20px 96px; }
+@media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; min-width: 0;
+  display: flex; flex-direction: column;
+}
+.panel h2 {
+  margin: 0; padding: 14px 16px 0; font: 500 13px var(--mono); letter-spacing: .04em;
+  text-transform: uppercase; color: var(--faint);
+}
+.pad { padding: 12px 16px 16px; }
+
+.lattice { display: grid; grid-template-columns: 72px repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; }
+.lattice .h, .lattice .lab { font: 500 11px var(--mono); color: var(--faint); display: flex; align-items: end; padding: 0 4px 4px; }
+.tile {
+  border: 1px solid var(--line); border-radius: 12px; padding: 8px 8px 7px; background: var(--bg);
+  min-height: 64px;
+}
+.tile .n { font-family: var(--serif); font-size: 22px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.tile .s { font: 11px var(--mono); color: var(--faint); }
+.tile.sick { background: var(--amber-dim); border-color: var(--amber); }
+.tile.healed { background: var(--green-dim); border-color: var(--green); }
+.tile.dim { opacity: .45; }
+
+.psp { display: flex; gap: 8px; margin-top: 12px; }
+.psp div { flex: 1; border-top: 1px solid var(--line); padding-top: 8px; }
+.psp b { display: block; font-weight: 500; font-size: 13px; }
+.psp span { font: 11px var(--mono); color: var(--faint); }
+
+.stations { display: flex; flex-direction: column; gap: 0; padding: 8px 16px 16px; position: relative; }
+.station {
+  display: grid; grid-template-columns: 18px 1fr; gap: 10px; padding: 7px 0;
+  opacity: .38;
+}
+.station.on, .station.done { opacity: 1; }
+.bead {
+  width: 12px; height: 12px; margin-top: 4px; border-radius: 50%;
+  border: 1.5px solid var(--faint); background: transparent;
+}
+.station.on .bead { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 0 4px var(--amber-dim); }
+.station.done .bead { background: var(--ink); border-color: var(--ink); }
+.station.bad.on .bead { background: var(--red); border-color: var(--red); box-shadow: 0 0 0 4px var(--red-dim); }
+.station.ok.on .bead { background: var(--green); border-color: var(--green); box-shadow: 0 0 0 4px var(--green-dim); }
+.station .nm { font-weight: 550; }
+.station .sub { color: var(--muted); font-size: 13px; }
+.gatebar {
+  height: 0; overflow: hidden; background: var(--red); color: white;
+  font: 500 12px var(--mono); letter-spacing: .04em; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; margin: 0 0 0 28px;
+}
+.gatebar.show { height: 28px; margin-bottom: 6px; }
+
+.slip .k { font: 500 11px var(--mono); color: var(--faint); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
+.slip h3 { font-family: var(--serif); font-weight: 500; font-size: 26px; letter-spacing: -.03em; margin: 0 0 8px; line-height: 1.1; }
+.slip p { margin: 0 0 10px; color: var(--muted); }
+.card {
+  font: 12.5px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 12px; white-space: pre-wrap; color: var(--ink);
+}
+.card .dim { color: var(--faint); }
+.card .hot { color: var(--amber); }
+.card .ok { color: var(--green); }
+.choices { display: flex; gap: 8px; margin-top: 10px; }
+.choice.yes { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.choice.no { background: transparent; }
+.tiny { font-size: 12.5px; color: var(--faint); margin: 8px 0 0; }
+
+.swarm { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 0 8px; }
+.dot { width: 14px; height: 14px; border-radius: 4px; background: var(--soft); border: 1px solid var(--line); }
+.dot.run { background: var(--amber); border-color: var(--amber); }
+.dot.wait { background: var(--red); border-color: var(--red); }
+.dot.ok { background: var(--green); border-color: var(--green); }
+.dot.dead { background: var(--faint); }
+.meters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.meter { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--bg); }
+.meter b { display: block; font-family: var(--serif); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.meter span { font: 11px var(--mono); color: var(--faint); }
+
+footer.narr {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+  display: grid; grid-template-columns: 88px 1fr; gap: 12px;
+  padding: 12px 20px 14px;
+}
+.narr .idx { font: 500 12px var(--mono); color: var(--faint); padding-top: 4px; }
+.narr h2 { margin: 0; font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: -.02em; }
+.narr p { margin: 2px 0 0; color: var(--muted); max-width: 78ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <div class="brand"><b>Route Desk</b><span class="chip">Simulated</span></div>
+    <div class="lenses" role="tablist" aria-label="Which layer you are looking at">
+      <button class="lens" id="lens-floor" type="button" role="tab" aria-selected="true">Floor</button>
+      <button class="lens" id="lens-boxes" type="button" role="tab" aria-selected="false">Boxes</button>
+      <button class="lens" id="lens-rows" type="button" role="tab" aria-selected="false">Rows</button>
+    </div>
+    <div class="ctls" role="group" aria-label="Walkthrough">
+      <button class="ctl" id="back" type="button">Back</button>
+      <button class="ctl" id="play" type="button">Play</button>
+      <button class="ctl" id="next" type="button">Next</button>
+      <button class="ctl" id="replay" type="button">Replay</button>
+      <button class="theme" id="theme" type="button" aria-label="Switch theme">☾</button>
+    </div>
+  </div>
+  <div class="rail" id="rail" role="tablist" aria-label="Steps"></div>
+</header>
+
+<main>
+  <section class="panel" aria-label="Approval rates">
+    <h2 id="board-title">Approval rates · last hour</h2>
+    <div class="pad" id="board"></div>
+  </section>
+  <section class="panel" aria-label="The run">
+    <h2 id="spine-title">This run</h2>
+    <div id="spine"></div>
+  </section>
+  <section class="panel slip" aria-live="polite">
+    <div class="pad" id="slip"></div>
+  </section>
+</main>
+
+<footer class="narr">
+  <div class="idx" id="idx">01 / 08</div>
+  <div>
+    <h2 id="narr-title"></h2>
+    <p id="narr-body"></p>
+  </div>
+</footer>
+
+<script>
+const RATES = [
+  ["BR", [92, 71, 98, 88]],
+  ["MX", [90, 89, 97, 86]],
+  ["UK", [94, 93, 91, 90]],
+  ["US", [95, 94, 89, 92]],
+];
+const COLS = ["Visa", "Mastercard", "Pix", "Amex"];
+const STATIONS = [
+  { id: "inbox", floor: "Message", boxes: "Webhook", rows: "messages", sub: "A known chat asks about Brazil." },
+  { id: "queue", floor: "Queue", boxes: "Scheduler", rows: "runs.lease_until", sub: "One lease. The rest of the yard waits." },
+  { id: "analyst", floor: "Analyst", boxes: "Worker", rows: "spans", sub: "Reads rates and decline reasons." },
+  { id: "actor", floor: "Actor", boxes: "Worker", rows: "state.proposal", sub: "Writes a route change into the shared state." },
+  { id: "gate", floor: "Signal", boxes: "Approval gate", rows: "approvals", sub: "Closed until a person decides." },
+  { id: "sandbox", floor: "Route book", boxes: "Sandbox port", rows: "routing_changes", sub: "One primary key, one row." },
+];
+
+const STEPS = [
+  {
+    id: "drop", title: "Mastercard in Brazil sags",
+    body: "Stripe's approval rate on that slice fell from 84% to 71%. Adyen, on the same cards, is still at 86%. The desk has not touched a route.",
+    lit: [], sick: true,
+  },
+  {
+    id: "inbox", title: "The night lead asks",
+    body: "A message arrives on the chat channel: why did Brazil drop, and what should move. The webhook checks the secret, stores the message, and inserts one queued run.",
+    lit: ["inbox"], sick: true,
+  },
+  {
+    id: "claim", title: "The yardmaster takes one train",
+    body: "The scheduler claims the run by setting a lease. A second poll finds the lease held and does nothing. The deadline is on the row, so a restart can still time the run out.",
+    lit: ["inbox", "queue"], sick: true,
+  },
+  {
+    id: "analyst", title: "The analyst reads the book",
+    body: "Two tools run: approval rates, then decline reasons. Decline code 51 is 40% of Stripe's Brazil Mastercard failures. Those numbers are written into the shared state document. The model does not set the run status.",
+    lit: ["inbox", "queue", "analyst"], sick: true,
+  },
+  {
+    id: "actor", title: "A proposal, not a change",
+    body: "The actor writes one proposal into the same document: move Mastercard / BR from Stripe to Adyen. The route book is unchanged. The run is now waiting.",
+    lit: ["inbox", "queue", "analyst", "actor"], sick: true,
+  },
+  {
+    id: "gate", title: "The signal is red",
+    body: "Approve and reject are compare-and-set on one row. Play stops here. The run will sit, even if this process restarts, until you decide.",
+    lit: ["inbox", "queue", "analyst", "actor", "gate"], sick: true, gate: true,
+  },
+  {
+    id: "effect", title: "One token, one row",
+    body: "The apply is a single transaction: re-check the approval, insert the routing row, store the effect id. Crash the worker and retry. The primary key is already there, so the book still shows one change.",
+    lit: ["inbox", "queue", "analyst", "actor", "gate", "sandbox"], sick: false, healed: true,
+  },
+  {
+    id: "load", title: "The floor, busy",
+    body: "Thirty-six runs arrive together. Four may hold a lease. Eleven of them propose the same Brazil move, and the book records that move once. Timeouts and rejections write no row.",
+    lit: [], load: true,
+  },
+];
+
+const LOAD = (() => {
+  const items = [];
+  for (let i = 0; i < 14; i++) items.push("ok");
+  for (let i = 0; i < 11; i++) items.push("dup");
+  for (let i = 0; i < 6; i++) items.push("uniq");
+  for (let i = 0; i < 3; i++) items.push("rej");
+  for (let i = 0; i < 2; i++) items.push("dead");
+  return items;
+})();
+
+const app = {
+  step: 0,
+  lens: "floor",
+  playing: false,
+  decision: null,
+  retried: false,
+  shown: 0,
+  timer: null,
+};
+
+const $ = (id) => document.getElementById(id);
+
+function esc(s) {
+  return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+function stopPlay() {
+  app.playing = false;
+  if (app.timer) clearTimeout(app.timer);
+  app.timer = null;
+  $("play").textContent = "Play";
+  $("play").setAttribute("aria-pressed", "false");
+}
+
+function startLoad() {
+  if (!STEPS[app.step].load || app.shown >= LOAD.length) return;
+  if (app.timer) clearTimeout(app.timer);
+  const tick = () => {
+    if (!STEPS[app.step].load) return;
+    app.shown = Math.min(LOAD.length, app.shown + 4);
+    render();
+    if (app.shown < LOAD.length) app.timer = setTimeout(tick, 220);
+    else app.timer = null;
+  };
+  app.timer = setTimeout(tick, 180);
+}
+
+function schedule() {
+  if (!app.playing) return;
+  const step = STEPS[app.step];
+  if (step.gate && !app.decision) { stopPlay(); return; }
+  if (step.load) return;
+  app.timer = setTimeout(() => {
+    if (app.step < STEPS.length - 1) go(app.step + 1);
+    else stopPlay();
+  }, 2800);
+}
+
+function go(n) {
+  app.step = Math.max(0, Math.min(STEPS.length - 1, n));
+  if (!STEPS[app.step].load) app.shown = 0;
+  if (app.step < 5) { app.decision = null; app.retried = false; }
+  render();
+  if (STEPS[app.step].load) { stopPlay(); startLoad(); }
+  else if (app.playing) { if (app.timer) clearTimeout(app.timer); schedule(); }
+}
+
+function renderBoard(step) {
+  $("board-title").textContent = step.load ? "Floor under load" : "Approval rates · last hour";
+  if (step.load) {
+    const seen = LOAD.slice(0, app.shown);
+    const waiting = seen.filter((k) => k === "dup" || k === "uniq").length;
+    const dead = seen.filter((k) => k === "dead").length;
+    const rej = seen.filter((k) => k === "rej").length;
+    const quiet = seen.filter((k) => k === "ok").length;
+    const effects = (seen.includes("dup") ? 1 : 0) + seen.filter((k) => k === "uniq").length;
+    const dots = seen.map((k) => {
+      const cls = k === "ok" ? "ok" : k === "dead" ? "dead" : k === "rej" ? "dead" : "wait";
+      return `<i class="dot ${cls}"></i>`;
+    }).join("");
+    $("board").innerHTML = `
+      <div class="swarm" aria-label="Runs on the floor">${dots}</div>
+      <div class="meters">
+        <div class="meter"><b>${seen.length}</b><span>runs arrived</span></div>
+        <div class="meter"><b>${Math.min(4, seen.length)}</b><span>leases held at once</span></div>
+        <div class="meter"><b>${waiting}</b><span>waiting on the signal</span></div>
+        <div class="meter"><b>${effects}</b><span>route rows written</span></div>
+        <div class="meter"><b>${quiet}</b><span>read-only, no change</span></div>
+        <div class="meter"><b>${dead + rej}</b><span>timed out or rejected</span></div>
+      </div>
+      <p class="tiny">Eleven dots share one proposal. They become one row. The other six proposals each get their own key.</p>`;
+    return;
+  }
+  const head = `<div class="h"></div>` + COLS.map((c) => `<div class="h">${c}</div>`).join("");
+  const rejected = app.decision === "rejected" && step.id === "effect";
+  const rows = RATES.map(([lab, nums]) => {
+    const cells = nums.map((n, i) => {
+      const sick = lab === "BR" && i === 1 && (step.sick || rejected);
+      const healed = step.healed && !rejected && lab === "BR" && i === 1;
+      const cls = sick ? "sick" : healed ? "healed" : "";
+      const note = sick ? "stripe · was 84" : healed ? "adyen · moved" : "steady";
+      return `<div class="tile ${cls}"><div class="n">${healed ? 86 : n}%</div><div class="s">${note}</div></div>`;
+    }).join("");
+    return `<div class="lab">${lab}</div>${cells}`;
+  }).join("");
+  const psp = step.healed && !rejected
+    ? [["Stripe", "BR mastercard left"], ["Adyen", "BR mastercard live"], ["dLocal", "unchanged"], ["EBANX", "unchanged"]]
+    : [["Stripe", "BR mc 71%"], ["Adyen", "BR mc 86%"], ["dLocal", "steady"], ["EBANX", "steady"]];
+  $("board").innerHTML = `<div class="lattice">${head}${rows}</div><div class="psp">${psp.map(([n, s]) => `<div><b>${n}</b><span>${s}</span></div>`).join("")}</div>`;
+}
+
+function renderSpine(step) {
+  $("spine-title").textContent = app.lens === "boxes" ? "Containers on this run" : app.lens === "rows" ? "Rows this run writes" : "This run";
+  if (step.load) {
+    $("spine").innerHTML = `<div class="pad"><p class="tiny" style="color:var(--muted);margin:0">The same six stations, thirty-six times. The supervisor still claims with a lease. The gate still wants a person. The book still refuses a second insert of the same key.</p></div>`;
+    return;
+  }
+  const focus = step.lit[step.lit.length - 1];
+  const html = STATIONS.map((st) => {
+    const on = st.id === focus;
+    const done = step.lit.includes(st.id) && !on;
+    const bad = st.id === "gate" && app.decision === "rejected" && step.id === "effect";
+    const ok = st.id === "sandbox" && step.healed && app.decision !== "rejected";
+    const name = st[app.lens] || st.floor;
+    return `<div class="station ${on ? "on" : ""} ${done ? "done" : ""} ${bad ? "bad" : ""} ${ok ? "ok" : ""}">
+      <i class="bead" aria-hidden="true"></i>
+      <div><div class="nm">${esc(name)}</div><div class="sub">${esc(st.sub)}</div></div>
+    </div>${st.id === "gate" && step.gate && !app.decision ? `<div class="gatebar show">HELD · waiting_approval</div>` : ""}`;
+  }).join("");
+  $("spine").innerHTML = `<div class="stations">${html}</div>`;
+}
+
+function slipFloor(step) {
+  if (step.load) {
+    return `<p class="k">Floor</p><h3>One book, many asks.</h3><p>Busy does not mean each proposal gets its own route change. The key is the run, the step, the tool, and the arguments. Same arguments, same row.</p>`;
+  }
+  const lines = [
+    ["status", step.lit.length === 0 ? "—" : step.gate && !app.decision ? "waiting_approval" : step.healed ? (app.decision === "rejected" ? "rejected" : "succeeded") : "running"],
+    ["metrics", step.lit.includes("analyst") ? "BR mastercard 71% ← 84%" : "·"],
+    ["top_decline", step.lit.includes("analyst") ? "51 · 40% · stripe" : "·"],
+    ["proposal", step.lit.includes("actor") ? "stripe → adyen · BR · mc" : "·"],
+    ["effect_id", step.healed && app.decision !== "rejected" ? (app.retried ? "9f3a · already applied" : "9f3a") : "·"],
+  ];
+  const body = lines.map(([k, v]) => {
+    const hot = (k === "proposal" && v !== "·") || (k === "effect_id" && v !== "·");
+    return `<span class="dim">${k.padEnd(12)}</span> <span class="${hot ? "hot" : ""}">${esc(v)}</span>`;
+  }).join("\n");
+  let extra = "";
+  if (step.gate && !app.decision) {
+    extra = `<div class="choices"><button class="choice yes" id="approve" type="button">Approve</button><button class="choice no" id="reject" type="button">Reject</button></div>`;
+  }
+  if (step.id === "effect" && app.decision !== "rejected") {
+    extra = `<div class="choices"><button class="choice" id="retry" type="button">${app.retried ? "Retried · still one row" : "Crash the worker and retry"}</button></div>`;
+  }
+  if (step.id === "effect" && app.decision === "rejected") {
+    return `<p class="k">State document</p><h3>No row.</h3><p>You rejected the proposal. The route book was not opened. Decline code 51 is still on Stripe.</p><div class="card">${body}</div>`;
+  }
+  return `<p class="k">State document</p><h3>${step.lit.includes("analyst") ? "Shared state" : "Empty card"}</h3><p>Workers write fields. The supervisor writes status and the effect id.</p><div class="card">${body}</div>${extra}`;
+}
+
+function slipBoxes(step) {
+  const notes = {
+    drop: ["Rate board", "A read model inside the sandbox port. The model provider is not on this picture yet."],
+    inbox: ["Webhook → API", "A bad signature is a 401. No run row is created. The message body is data, not an instruction."],
+    claim: ["Scheduler → supervisor", "Claim is one update. The loser of that update finds the lease held."],
+    analyst: ["Worker → model, worker → tool router", "A model timeout backs off, then the step fails. Tool results come back wrapped as untrusted data."],
+    actor: ["Same workers, same document", "The actor cannot call the sandbox write. The router is the only door."],
+    gate: ["Operator → approval row", "The UI and the chat resolve the same row. The model cannot insert it."],
+    effect: ["Router → sandbox", "The write and the effect record commit together. A crash after commit recovers by reading the row."],
+    load: ["One process, one database", "Load adds rows, not boxes. A second machine would be a new design, and this desk is one machine."],
+  };
+  const [h, p] = notes[step.id];
+  return `<p class="k">Boxes</p><h3>${esc(h)}</h3><p>${esc(p)}</p><p class="tiny">Five containers in the whole design: the desk UI, this process, SQLite, the model provider, and the chat channel. The sandbox is a port inside the process.</p>`;
+}
+
+function slipRows(step) {
+  const rows = {
+    drop: ["—", "No run yet. The lattice is a read of sandbox rates."],
+    inbox: ["INSERT messages", "chat_id, body, expires_at, run_id\nINSERT runs  status=queued  deadline_at=now+limit"],
+    claim: ["UPDATE runs", "SET status=running, lease_until=now+30s\nWHERE id=? AND (lease_until IS NULL OR lease_until < now)"],
+    analyst: ["INSERT spans × 3", "kind=model, kind=tool get_rates, kind=tool get_declines\nUPDATE runs SET state_json=?, state_version=state_version+1\nWHERE state_version=?"],
+    actor: ["UPDATE runs.state_json", "proposal = {from:stripe, to:adyen, brand:mc, country:BR}\nINSERT approvals  status=pending  UNIQUE(run_id, step_id)"],
+    gate: ["UPDATE approvals", "SET status='approved'\nWHERE id=? AND status='pending'\nZero rows changed means the other click won."],
+    effect: ["INSERT routing_changes", "idempotency_key PRIMARY KEY = hash(run, step, tool, args)\nON CONFLICT read the existing row\neffect_id = 9f3a"],
+    load: ["Same keys, more rows", "36 runs. 11 share hash 9f3a.\nrouting_changes grows by 7, not by 17."],
+  };
+  const [h, body] = rows[step.id];
+  const clash = step.id === "effect" && app.retried ? "\n\nconstraint routing_changes_pkey  →  return existing 9f3a" : "";
+  return `<p class="k">Rows</p><h3>${esc(h)}</h3><div class="card">${esc(body + clash)}</div><p class="tiny">Hidden reasoning has no column. Token cost is an integer on the span, in micros.</p>`;
+}
+
+function renderSlip(step) {
+  const fn = app.lens === "boxes" ? slipBoxes : app.lens === "rows" ? slipRows : slipFloor;
+  $("slip").innerHTML = fn(step);
+  const approve = $("approve");
+  const reject = $("reject");
+  const retry = $("retry");
+  if (approve) approve.onclick = () => { app.decision = "approved"; go(6); };
+  if (reject) reject.onclick = () => { app.decision = "rejected"; go(6); };
+  if (retry) retry.onclick = () => { app.retried = true; render(); };
+}
+
+function renderRail(step) {
+  $("rail").innerHTML = STEPS.map((s, i) => {
+    const cls = i === app.step ? "cur" : i < app.step ? "done" : "";
+    return `<button type="button" class="${cls}" data-i="${i}">${String(i + 1).padStart(2, "0")} ${esc(s.title.split(" ").slice(0, 2).join(" "))}</button>`;
+  }).join("");
+  $("rail").querySelectorAll("button").forEach((b) => {
+    b.onclick = () => { stopPlay(); go(Number(b.dataset.i)); };
+  });
+}
+
+function render() {
+  const step = STEPS[app.step];
+  renderBoard(step);
+  renderSpine(step);
+  renderSlip(step);
+  renderRail(step);
+  $("idx").textContent = `${String(app.step + 1).padStart(2, "0")} / ${String(STEPS.length).padStart(2, "0")}`;
+  $("narr-title").textContent = step.title;
+  let body = step.body;
+  if (step.id === "effect" && app.decision === "rejected") {
+    body = "The signal stayed red. Compare-and-set wrote rejected. The sandbox insert never ran, so a retry has nothing to collide with and still writes nothing.";
+  }
+  if (step.id === "effect" && app.retried && app.decision !== "rejected") {
+    body = "The worker came back and tried the insert again. The primary key 9f3a is already in the book. The transaction returns that row and marks the step succeeded. Stripe is still off this route. Adyen is on it once.";
+  }
+  $("narr-body").textContent = body;
+  document.querySelectorAll(".lens").forEach((b) => b.setAttribute("aria-selected", b.id === "lens-" + app.lens ? "true" : "false"));
+}
+
+$("back").onclick = () => { stopPlay(); go(app.step - 1); };
+$("next").onclick = () => {
+  const step = STEPS[app.step];
+  if (step.gate && !app.decision) return;
+  stopPlay();
+  go(app.step + 1);
+};
+$("play").onclick = () => {
+  if (app.playing) { stopPlay(); return; }
+  app.playing = true;
+  $("play").textContent = "Pause";
+  $("play").setAttribute("aria-pressed", "true");
+  schedule();
+};
+$("replay").onclick = () => {
+  stopPlay();
+  app.decision = null;
+  app.retried = false;
+  app.shown = 0;
+  go(0);
+};
+document.querySelectorAll(".lens").forEach((b) => {
+  b.onclick = () => { app.lens = b.id.replace("lens-", ""); render(); };
+});
+$("theme").onclick = () => {
+  const html = document.documentElement;
+  const next = html.dataset.theme === "dark" ? "light" : "dark";
+  html.dataset.theme = next;
+  $("theme").textContent = next === "dark" ? "☾" : "☀";
+  $("theme").setAttribute("aria-label", next === "dark" ? "Switch to light" : "Switch to dark");
+};
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  if (e.key === "ArrowRight") $("next").click();
+  if (e.key === "ArrowLeft") $("back").click();
+  if (e.key === " ") { e.preventDefault(); $("play").click(); }
+});
+
+render();
+</script>
+</body>
+</html>
